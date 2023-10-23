@@ -7,14 +7,9 @@
 /// Class for implementing (not delayed) thread with action on end of lifetime (join or
 /// detach) That simple realisation guarantees, that programm will not stop abruptly due
 /// to a destructor call in the attachable thread
-class InstantThreadRAII
-{
+class InstantThreadRAII {
   public:
-    enum class Action
-    {
-        join,
-        detach
-    };
+    enum class Action { join, detach };
 
     InstantThreadRAII() = delete;
     InstantThreadRAII(std::thread &&thread, Action action)
@@ -32,8 +27,7 @@ class InstantThreadRAII
 
     ~InstantThreadRAII()
     {
-        if (thread_.joinable())
-        {
+        if (thread_.joinable()) {
             if (action_ == Action::join)
                 thread_.join();
             else
@@ -52,25 +46,15 @@ template <typename T> std::decay_t<T> decay_copy(T &&val) { return std::forward<
 /// That simple realisation unlike the previous one guarantees, that the std::promise
 /// will be setted automatically if an exception was thrown in parent thread.
 /// That class can't gurantees safety for all cases, so use it carefully.
-class LatchedThreadRAII
-{
+class LatchedThreadRAII {
   public:
-    enum Action
-    {
-        JOIN,
-        DETACH
-    };
+    enum Action { JOIN, DETACH };
 
   private:
     using promise_t = std::promise<bool>;
     using thread_t  = std::thread;
 
-    enum execution_state
-    {
-        WAITING,
-        EXECUTING,
-        DISMISSED
-    };
+    enum execution_state { WAITING, EXECUTING, DISMISSED };
 
     execution_state state_ = WAITING;
     promise_t       should_execute_;
@@ -96,13 +80,11 @@ class LatchedThreadRAII
     template <typename op_t>
     LatchedThreadRAII(op_t &&op)
         : should_execute_(),
-          thread_(
-              [op             = decay_copy(std::forward<op_t>(op)),
-               should_execute = should_execute_.get_future()]() mutable
-              {
-                  if (should_execute.get())
-                      op();
-              })
+          thread_([op             = decay_copy(std::forward<op_t>(op)),
+                   should_execute = should_execute_.get_future()]() mutable {
+              if (should_execute.get())
+                  op();
+          })
     {
     }
 
@@ -122,8 +104,7 @@ class LatchedThreadRAII
 
     void execute()
     {
-        if (state_ == WAITING)
-        {
+        if (state_ == WAITING) {
             state_ = EXECUTING;
             should_execute_.set_value(true);
         }
@@ -166,8 +147,7 @@ class LatchedThreadRAII
 
     ~LatchedThreadRAII()
     {
-        if (state_ == WAITING)
-        {
+        if (state_ == WAITING) {
             // If thread is waiting, but the caller is ended
             should_execute_.set_value(false);
             if (thread_.joinable())
@@ -176,8 +156,7 @@ class LatchedThreadRAII
             return;
         }
 
-        if (thread_.joinable())
-        {
+        if (thread_.joinable()) {
 
             if (action_ == Action::JOIN)
                 thread_.join();
@@ -188,8 +167,7 @@ class LatchedThreadRAII
 };
 
 // Std injection
-namespace std
-{
+namespace std {
 template <> void swap(LatchedThreadRAII &first, LatchedThreadRAII &second)
 {
     first.swap(second);

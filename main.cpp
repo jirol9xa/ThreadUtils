@@ -1,17 +1,47 @@
-#include <thread>
-#include <array>
+#include "AutoParallel.hpp"
 #include "ThreadsafeCout.hpp"
+#include <array>
+#include <chrono>
+#include <string>
+#include <thread>
 
-void threadFunc(int thread_id) {
-    ParCout{} << "Thread number " << thread_id << " said hello!\n";
+using namespace std::chrono_literals;
+
+std::string create(const char *str)
+{
+    ParCout{} << "Created string:" << str << '\n';
+    std::this_thread::sleep_for(3s);
+
+    return {str};
 }
 
-int main() {
-    std::array<std::thread, 100> threads;
-    for (int i = 0; i < threads.size(); ++i) 
-        threads[i] = std::thread{threadFunc, i};
-    for (auto &thread : threads)
-        thread.join();
+std::string concat(const std::string &first, const std::string &second)
+{
+    ParCout{} << "Concatinating two strings: " << first << " and " << second << '\n';
+    std::this_thread::sleep_for(3s);
+
+    return first + second;
+}
+
+std::string duplicate(const std::string &str)
+{
+    ParCout{} << "Duplicating string: " << str << '\n';
+    std::this_thread::sleep_for(3s);
+
+    return str + str;
+}
+
+int main()
+{
+    auto p_create{CreateAsynchronize(create)};
+    auto p_concat{AsyncAdapter(concat)};
+    auto p_duplicate{AsyncAdapter(duplicate)};
+
+    auto result(p_duplicate(
+        p_concat(p_duplicate(p_concat(p_create(" smoke "), p_create(" hookah "))),
+                 p_create(" GraphLounge "))));
+
+    std::cout << result().get() << '\n';
 
     return 0;
 }
